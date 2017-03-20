@@ -15,16 +15,19 @@ func padding(data string) []byte {
 	return []byte(fmt.Sprintf(format, data))
 }
 
-func main() {
-	plainText := padding("example no plain text death.")
-	key := padding("example no key death.")
-
-	block, err := aes.NewCipher(key)
+func generateBlock(key string) (block cipher.Block) {
+	pk := padding(key)
+	block, err := aes.NewCipher(pk)
 	if err != nil {
 		fmt.Printf("err: %s\n", err)
 	}
 
-	encrypted := make([]byte, aes.BlockSize+len(plainText))
+	return block
+}
+
+func encrypt(block cipher.Block, plainText string) (encypted []byte) {
+	data := padding(plainText)
+	encrypted := make([]byte, aes.BlockSize+len(data))
 
 	iv := encrypted[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
@@ -32,11 +35,28 @@ func main() {
 	}
 
 	encryptMode := cipher.NewCBCEncrypter(block, iv)
-	encryptMode.CryptBlocks(encrypted[aes.BlockSize:], plainText)
-	fmt.Printf("encrypted: %v\n", encrypted)
+	encryptMode.CryptBlocks(encrypted[aes.BlockSize:], data)
 
-	decrypted := make([]byte, len(encrypted[aes.BlockSize:]))
+	return encrypted
+}
+
+func decrypte(block cipher.Block, encrypted []byte) (decrypted []byte) {
+	decrypted = make([]byte, len(encrypted[aes.BlockSize:]))
 	decryptMode := cipher.NewCBCDecrypter(block, encrypted[:aes.BlockSize])
 	decryptMode.CryptBlocks(decrypted, encrypted[aes.BlockSize:])
+
+	return decrypted
+}
+
+func main() {
+	plainText := "example no plain text death."
+	key := "example no key death."
+
+	block := generateBlock(key)
+
+	encrypted := encrypt(block, plainText)
+	fmt.Printf("encrypted: %v\n", encrypted)
+
+	decrypted := decrypte(block, encrypted)
 	fmt.Printf("decrypted: %s\n", string(decrypted))
 }
